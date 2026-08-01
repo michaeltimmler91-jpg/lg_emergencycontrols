@@ -38,6 +38,7 @@ Config.DistantSirenRefreshMs = 5000
 Config.ShowNotifications = true
 
 -- Eingebaute GTA-Sirenen. Keine zusaetzliche Sirenen-Resource erforderlich.
+-- Mit R wird zyklisch durch diese Liste geschaltet.
 Config.SirenTones = {
     {
         label = 'Wail',
@@ -52,6 +53,11 @@ Config.SirenTones = {
     {
         label = 'Hi-Lo',
         sound = 'RESIDENT_VEHICLES_SIREN_QUICK_02',
+        soundSet = 0
+    },
+    {
+        label = 'Powercall',
+        sound = 'VEHICLES_HORNS_AMBULANCE_WARNING',
         soundSet = 0
     }
 }
