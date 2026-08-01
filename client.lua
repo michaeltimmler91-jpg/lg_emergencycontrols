@@ -10,6 +10,7 @@ local extraAllowedModels = {}
 local tonePressToken = 0
 local tonePressVehicle = 0
 local tonePressPowercallActive = false
+local trackedDriverVehicle = 0
 
 local function buildModelSet(list)
     local set = {}
@@ -241,6 +242,44 @@ local function currentState(vehicle)
     return netId, state
 end
 
+local function cancelTonePress()
+    tonePressToken = tonePressToken + 1
+    tonePressVehicle = 0
+    tonePressPowercallActive = false
+end
+
+local function stopSirenForExit(vehicle, useExitFallback)
+    if vehicle == 0 or not DoesEntityExist(vehicle) then return end
+
+    local netId = NetworkGetNetworkIdFromEntity(vehicle)
+    if netId == 0 then return end
+
+    local state = vehicleStates[netId]
+    if type(state) ~= 'table' then return end
+
+    -- Wenn das Martinshorn bereits aus ist, bleibt nur das Blaulicht unveraendert bestehen.
+    if not state.siren and not state.powercall then return end
+
+    local exitState = {
+        lights = state.lights == true,
+        siren = false,
+        tone = normalizeNormalTone(state.tone),
+        powercall = false
+    }
+
+    vehicleStates[netId] = exitState
+    applyState(netId, exitState)
+    cancelTonePress()
+
+    if useExitFallback then
+        -- Fuer erzwungenes Aussteigen: Der Spieler kann hier bereits nicht mehr Fahrer sein.
+        TriggerServerEvent('lg_emergencycontrols:driverExited', netId)
+    else
+        -- Beim normalen Aussteigen wird der Zustand noch als Fahrer gesendet.
+        TriggerServerEvent('lg_emergencycontrols:updateState', netId, exitState)
+    end
+end
+
 RegisterNetEvent('lg_emergencycontrols:syncState', function(netId, state)
     netId = tonumber(netId)
     if not netId or type(state) ~= 'table' then return end
@@ -354,9 +393,7 @@ RegisterCommand('-lg_emergency_tone', function()
     local vehicle = tonePressVehicle
     local wasPowercallActive = tonePressPowercallActive
 
-    tonePressToken = tonePressToken + 1
-    tonePressVehicle = 0
-    tonePressPowercallActive = false
+    cancelTonePress()
 
     if vehicle == 0 or getDriverVehicle() ~= vehicle then return end
 
@@ -398,6 +435,48 @@ end, false)
 RegisterKeyMapping('+lg_emergency_lights', 'Blaulicht AN / AUS', 'keyboard', Config.Keys.Lights)
 RegisterKeyMapping('+lg_emergency_siren', 'Martinshorn AN / AUS', 'keyboard', Config.Keys.Siren)
 RegisterKeyMapping('+lg_emergency_tone', 'Martinshorn wechseln / Powercall halten', 'keyboard', Config.Keys.Tone)
+
+-- Beim normalen Aussteigen wird das Martinshorn noch ausgeschaltet, solange der
+-- Spieler serverseitig eindeutig als Fahrer erkannt wird. Das Blaulicht bleibt an.
+CreateThread(function()
+    while true do
+        local vehicle = getDriverVehicle()
+
+        if vehicle ~= 0 then
+            if IsControlJustPressed(0, 75) or IsDisabledControlJustPressed(0, 75) then
+                stopSirenForExit(vehicle, false)
+            end
+            Wait(0)
+        else
+            Wait(150)
+        end
+    end
+end)
+
+-- Fallback fuer Situationen, in denen ein anderes Script den Spieler aus dem Sitz
+-- entfernt (Tod, Teleport, TaskLeaveVehicle usw.). Sobald der Fahrersitz verlassen
+-- wurde, gehen Martinshorn und Powercall aus; der Lichtzustand wird nicht veraendert.
+CreateThread(function()
+    while true do
+        local ped = PlayerPedId()
+        local vehicle = GetVehiclePedIsIn(ped, false)
+        local currentDriverVehicle = 0
+
+        if vehicle ~= 0
+            and DoesEntityExist(vehicle)
+            and GetPedInVehicleSeat(vehicle, -1) == ped
+            and isControlledVehicle(vehicle) then
+            currentDriverVehicle = vehicle
+        end
+
+        if trackedDriverVehicle ~= 0 and trackedDriverVehicle ~= currentDriverVehicle then
+            stopSirenForExit(trackedDriverVehicle, true)
+        end
+
+        trackedDriverVehicle = currentDriverVehicle
+        Wait(currentDriverVehicle ~= 0 and 50 or 100)
+    end
+end)
 
 -- Verhindert, dass GTA parallel eigene Funktionen auf denselben Tasten ausloest.
 CreateThread(function()
