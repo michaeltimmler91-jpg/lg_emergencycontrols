@@ -32,7 +32,7 @@ local function notify(message)
 end
 
 local function getNormalToneCount()
-    local configured = tonumber(Config.NormalSirenToneCount) or 3
+    local configured = tonumber(Config.NormalSirenToneCount) or 4
     local available = #(Config.SirenTones or {})
 
     if configured < 1 then configured = 1 end
@@ -181,7 +181,7 @@ local function startPowercallSound(netId, vehicle)
         return
     end
 
-    local powercallToneIndex = tonumber(Config.PowercallToneIndex) or 4
+    local powercallToneIndex = tonumber(Config.PowercallToneIndex) or 5
     local tone = Config.SirenTones[powercallToneIndex]
     if not tone then return end
 
@@ -508,12 +508,20 @@ RegisterCommand('+lg_emergency_tone3', function()
 end, false)
 RegisterCommand('-lg_emergency_tone3', function() end, false)
 
+RegisterCommand('+lg_emergency_tone4', function()
+    local vehicle = getDriverVehicle()
+    if vehicle == 0 then return end
+    setPreferredToneForVehicle(vehicle, 4, true)
+end, false)
+RegisterCommand('-lg_emergency_tone4', function() end, false)
+
 RegisterKeyMapping('+lg_emergency_lights', 'Blaulicht AN / AUS', 'keyboard', Config.Keys.Lights)
 RegisterKeyMapping('+lg_emergency_siren', 'Martinshorn AN / AUS', 'keyboard', Config.Keys.Siren)
 RegisterKeyMapping('+lg_emergency_tone', 'Martinshorn wechseln / Powercall halten', 'keyboard', Config.Keys.Tone)
 RegisterKeyMapping('+lg_emergency_tone1', 'Martinshorn direkt: Wail', 'keyboard', Config.Keys.Tone1)
 RegisterKeyMapping('+lg_emergency_tone2', 'Martinshorn direkt: Yelp', 'keyboard', Config.Keys.Tone2)
 RegisterKeyMapping('+lg_emergency_tone3', 'Martinshorn direkt: Hi-Lo', 'keyboard', Config.Keys.Tone3)
+RegisterKeyMapping('+lg_emergency_tone4', 'Martinshorn direkt: Q-Siren', 'keyboard', Config.Keys.Tone4)
 
 -- Beim normalen Aussteigen wird das Martinshorn ausgeschaltet, das Blaulicht bleibt an.
 CreateThread(function()
@@ -574,6 +582,7 @@ CreateThread(function()
             DisableControlAction(0, 157, true) -- 1 / Weapon Unarmed
             DisableControlAction(0, 158, true) -- 2 / Weapon Melee
             DisableControlAction(0, 160, true) -- 3 / Weapon Shotgun
+            DisableControlAction(0, 164, true) -- 4 / Weapon Heavy
         end
 
         Wait(sleep)
