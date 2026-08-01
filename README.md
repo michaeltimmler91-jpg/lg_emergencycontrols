@@ -8,7 +8,7 @@ Eigenstaendige FiveM-Resource fuer getrennte Steuerung von Blaulicht und Martins
 - **Q**: Martinshorn AN / AUS (nur wenn Blaulicht an ist)
 - **R kurz druecken**: normalen Martinshorn-Ton wechseln
 - **R gedrueckt halten**: Powercall temporaer abspielen
-- **R loslassen**: automatisch zum vorher eingestellten normalen Martinshorn zurueck
+- **R loslassen**: der normale Martinshorn-Ton wird genau an seiner inzwischen erreichten Abspielposition wieder hoerbar
 
 Die normalen, mit kurzem R wechselbaren Toene sind:
 
@@ -20,17 +20,21 @@ Powercall ist kein vierter dauerhaft ausgewaehlter Ton mehr. Er wird nur aktivie
 
 Der Powercall nutzt den bereits in GTA V vorhandenen Sound `VEHICLES_HORNS_AMBULANCE_WARNING`. Es ist dafuer keine zusaetzliche Audio-Datei erforderlich.
 
+### Nahtloser Wechsel nach Powercall
+
+Der normale Martinshorn-Ton wird beim Start des Powercalls nicht gestoppt oder neu gestartet. Er laeuft intern weiter und wird waehrend des Powercalls nur stummgeschaltet. Beim Loslassen von R wird derselbe laufende Sound wieder eingeblendet. Dadurch beginnt Wail/Yelp/Hi-Lo nicht wieder von vorne.
+
 Die Tasten werden mit `RegisterKeyMapping` registriert und koennen von Spielern in den FiveM-Tastatureinstellungen geaendert werden.
 
 ## Besonderheiten
 
 - Blaulicht und Martinshorn sind voneinander getrennt.
 - Beim Ausschalten des Blaulichts wird das Martinshorn automatisch ausgeschaltet.
-- Der ausgewaehlte normale Martinshorn-Ton bleibt beim Powercall erhalten.
+- Der ausgewaehlte normale Martinshorn-Ton bleibt beim Powercall erhalten und laeuft zeitlich weiter.
 - Fahrzeuge koennen komplett von der Steuerung ausgeschlossen werden.
 - Fahrzeuge wie Abschlepper koennen Licht benutzen, waehrend Q und R gesperrt sind.
 - GTA-`DistantCopCarSirens` werden deaktiviert, damit keine kuenstlichen Sirenen aus grosser Entfernung zu hoeren sind.
-- Sirenenzustand und Sirenenton werden zwischen Spielern synchronisiert.
+- Sirenenzustand, Sirenenton und Powercall werden zwischen Spielern synchronisiert.
 - Keine ESX-/QBCore-Abhaengigkeit.
 
 ## Installation
