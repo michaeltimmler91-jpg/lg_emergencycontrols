@@ -8,10 +8,16 @@ Config.Keys = {
 }
 
 -- R kurz: normalen Martinshorn-Ton wechseln.
--- R lange halten: temporaer Powercall, beim Loslassen zurueck zum vorherigen Ton.
+-- R lange halten: temporaer Powercall, beim Loslassen zurueck zum laufenden normalen Ton.
 Config.PowercallHoldMs = 450
 Config.NormalSirenToneCount = 3
 Config.PowercallToneIndex = 4
+
+-- Der normale Ton wird waehrend Powercall NICHT gestoppt, sondern nur stumm geschaltet.
+-- Dadurch laeuft seine Abspielposition weiter und setzt danach nahtlos fort.
+Config.SirenMuteVariable = 'Loudness'
+Config.SirenMutedValue = 0.0
+Config.SirenNormalValue = 1.0
 
 -- Standardmaessig werden Fahrzeuge der GTA-Klasse 18 (Emergency) unterstuetzt.
 Config.RequireEmergencyClass = true
