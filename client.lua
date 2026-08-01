@@ -6,6 +6,12 @@ local noControlModels = {}
 local noSirenModels = {}
 local extraAllowedModels = {}
 
+local tonePressToken = 0
+local tonePressVehicle = 0
+local tonePressStartedAt = 0
+local tonePressPreviousTone = 1
+local tonePressPowercallActive = false
+
 local function buildModelSet(list)
     local set = {}
     for _, modelName in ipairs(list or {}) do
@@ -152,6 +158,27 @@ local function currentState(vehicle)
     return netId, state
 end
 
+local function getNormalToneCount()
+    local configured = tonumber(Config.NormalSirenToneCount) or 3
+    local available = #(Config.SirenTones or {})
+
+    if configured < 1 then configured = 1 end
+    if configured > available then configured = available end
+
+    return configured
+end
+
+local function normalizeNormalTone(tone)
+    local normalToneCount = getNormalToneCount()
+    tone = tonumber(tone) or 1
+
+    if tone < 1 or tone > normalToneCount then
+        return 1
+    end
+
+    return tone
+end
+
 RegisterNetEvent('lg_emergencycontrols:syncState', function(netId, state)
     netId = tonumber(netId)
     if not netId or type(state) ~= 'table' then return end
@@ -180,7 +207,7 @@ RegisterCommand('+lg_emergency_lights', function()
     sendState(vehicle, {
         lights = newLights,
         siren = newLights and state.siren or false,
-        tone = state.tone or 1
+        tone = normalizeNormalTone(state.tone)
     })
 
     notify(newLights and '~b~Blaulicht AN' or '~s~Blaulicht AUS')
@@ -209,7 +236,7 @@ RegisterCommand('+lg_emergency_siren', function()
     sendState(vehicle, {
         lights = true,
         siren = newSiren,
-        tone = state.tone or 1
+        tone = normalizeNormalTone(state.tone)
     })
 
     notify(newSiren and '~r~Martinshorn AN' or '~s~Martinshorn AUS')
@@ -222,16 +249,72 @@ RegisterCommand('+lg_emergency_tone', function()
     if vehicle == 0 or isNoSirenVehicle(vehicle) then return end
 
     local _, state = currentState(vehicle)
+    if not state.lights or not state.siren then return end
 
-    if not state.lights or not state.siren then
+    tonePressToken = tonePressToken + 1
+    local thisPressToken = tonePressToken
+
+    tonePressVehicle = vehicle
+    tonePressStartedAt = GetGameTimer()
+    tonePressPreviousTone = normalizeNormalTone(state.tone)
+    tonePressPowercallActive = false
+
+    CreateThread(function()
+        Wait(tonumber(Config.PowercallHoldMs) or 450)
+
+        if tonePressToken ~= thisPressToken then return end
+        if tonePressVehicle ~= vehicle then return end
+        if getDriverVehicle() ~= vehicle then return end
+
+        local _, current = currentState(vehicle)
+        if not current.lights or not current.siren then return end
+
+        local powercallTone = tonumber(Config.PowercallToneIndex) or 4
+        if not Config.SirenTones[powercallTone] then return end
+
+        tonePressPowercallActive = true
+
+        sendState(vehicle, {
+            lights = true,
+            siren = true,
+            tone = powercallTone
+        })
+
+        notify('~r~Powercall')
+    end)
+end, false)
+
+RegisterCommand('-lg_emergency_tone', function()
+    local vehicle = tonePressVehicle
+    local previousTone = tonePressPreviousTone
+    local wasPowercallActive = tonePressPowercallActive
+
+    tonePressToken = tonePressToken + 1
+    tonePressVehicle = 0
+    tonePressStartedAt = 0
+    tonePressPowercallActive = false
+
+    if vehicle == 0 or getDriverVehicle() ~= vehicle then return end
+
+    local _, state = currentState(vehicle)
+    if not state.lights or not state.siren then return end
+
+    if wasPowercallActive then
+        -- Langdruck beendet: exakt zum vorher gewaehlten normalen Ton zurueck.
+        sendState(vehicle, {
+            lights = true,
+            siren = true,
+            tone = previousTone
+        })
         return
     end
 
-    local toneCount = #(Config.SirenTones or {})
-    if toneCount < 2 then return end
+    -- Kurzer Druck: nur durch die normalen Toene schalten, Powercall wird uebersprungen.
+    local normalToneCount = getNormalToneCount()
+    if normalToneCount < 2 then return end
 
-    local nextTone = (state.tone or 1) + 1
-    if nextTone > toneCount then
+    local nextTone = normalizeNormalTone(state.tone) + 1
+    if nextTone > normalToneCount then
         nextTone = 1
     end
 
@@ -245,13 +328,11 @@ RegisterCommand('+lg_emergency_tone', function()
     notify(('~r~Martinshorn:~s~ %s'):format(tone.label or nextTone))
 end, false)
 
-RegisterCommand('-lg_emergency_tone', function() end, false)
-
 RegisterKeyMapping('+lg_emergency_lights', 'Blaulicht AN / AUS', 'keyboard', Config.Keys.Lights)
 RegisterKeyMapping('+lg_emergency_siren', 'Martinshorn AN / AUS', 'keyboard', Config.Keys.Siren)
-RegisterKeyMapping('+lg_emergency_tone', 'Martinshorn-Ton wechseln', 'keyboard', Config.Keys.Tone)
+RegisterKeyMapping('+lg_emergency_tone', 'Martinshorn wechseln / Powercall halten', 'keyboard', Config.Keys.Tone)
 
--- Verhindert, dass GTA parallel mit E/Q/R seine eigenen Fahrzeugfunktionen ausloest.
+-- Verhindert, dass GTA parallel eigene Funktionen auf denselben Tasten ausloest.
 CreateThread(function()
     while true do
         local sleep = 500
@@ -259,6 +340,7 @@ CreateThread(function()
 
         if vehicle ~= 0 then
             sleep = 0
+            DisableControlAction(0, 19, true) -- Linkes ALT / Character Wheel
             DisableControlAction(0, 86, true) -- E / Fahrzeughupe bzw. Standard-Sirenenbedienung
             DisableControlAction(0, 85, true) -- Q / Radio-Wheel
             DisableControlAction(0, 80, true) -- R / Cinematic Camera
