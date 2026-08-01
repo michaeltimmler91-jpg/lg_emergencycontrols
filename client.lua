@@ -1,6 +1,7 @@
 local vehicleStates = {}
 local activeSounds = {}
 local activeSoundTones = {}
+local activePowercallSounds = {}
 
 local noControlModels = {}
 local noSirenModels = {}
@@ -8,8 +9,6 @@ local extraAllowedModels = {}
 
 local tonePressToken = 0
 local tonePressVehicle = 0
-local tonePressStartedAt = 0
-local tonePressPreviousTone = 1
 local tonePressPowercallActive = false
 
 local function buildModelSet(list)
@@ -80,84 +79,6 @@ local function getDriverVehicle()
     return vehicle
 end
 
-local function stopSirenSound(netId)
-    local soundId = activeSounds[netId]
-    if not soundId then return end
-
-    StopSound(soundId)
-    ReleaseSoundId(soundId)
-    activeSounds[netId] = nil
-    activeSoundTones[netId] = nil
-end
-
-local function startSirenSound(netId, vehicle, toneIndex)
-    local tone = Config.SirenTones[toneIndex]
-    if not tone then return end
-
-    if activeSounds[netId] and activeSoundTones[netId] == toneIndex then
-        return
-    end
-
-    stopSirenSound(netId)
-
-    local soundId = GetSoundId()
-    activeSounds[netId] = soundId
-    activeSoundTones[netId] = toneIndex
-
-    PlaySoundFromEntity(
-        soundId,
-        tone.sound,
-        vehicle,
-        tone.soundSet or 0,
-        false,
-        0
-    )
-end
-
-local function applyState(netId, state)
-    local vehicle = NetworkGetEntityFromNetworkId(netId)
-    if vehicle == 0 or not DoesEntityExist(vehicle) then
-        stopSirenSound(netId)
-        return
-    end
-
-    -- Die GTA-Standardsirene bleibt stumm. Den Ton spielen wir selbst,
-    -- damit Licht und Martinshorn wirklich getrennt bleiben.
-    SetVehicleHasMutedSirens(vehicle, true)
-    SetVehicleSiren(vehicle, state.lights == true)
-
-    if state.lights and state.siren and not isNoSirenVehicle(vehicle) then
-        startSirenSound(netId, vehicle, state.tone or 1)
-    else
-        stopSirenSound(netId)
-    end
-end
-
-local function sendState(vehicle, state)
-    local netId = NetworkGetNetworkIdFromEntity(vehicle)
-    if netId == 0 then return end
-
-    vehicleStates[netId] = state
-    applyState(netId, state)
-    TriggerServerEvent('lg_emergencycontrols:updateState', netId, state)
-end
-
-local function currentState(vehicle)
-    local netId = NetworkGetNetworkIdFromEntity(vehicle)
-    local state = vehicleStates[netId]
-
-    if not state then
-        state = {
-            lights = false,
-            siren = false,
-            tone = 1
-        }
-        vehicleStates[netId] = state
-    end
-
-    return netId, state
-end
-
 local function getNormalToneCount()
     local configured = tonumber(Config.NormalSirenToneCount) or 3
     local available = #(Config.SirenTones or {})
@@ -179,10 +100,153 @@ local function normalizeNormalTone(tone)
     return tone
 end
 
+local function setBaseSirenMuted(netId, muted)
+    local soundId = activeSounds[netId]
+    if not soundId then return end
+
+    local variableName = Config.SirenMuteVariable or 'Loudness'
+    local value = muted and (Config.SirenMutedValue or 0.0) or (Config.SirenNormalValue or 1.0)
+    SetVariableOnSound(soundId, variableName, value)
+end
+
+local function stopSirenSound(netId)
+    local soundId = activeSounds[netId]
+    if not soundId then return end
+
+    StopSound(soundId)
+    ReleaseSoundId(soundId)
+    activeSounds[netId] = nil
+    activeSoundTones[netId] = nil
+end
+
+local function startSirenSound(netId, vehicle, toneIndex)
+    toneIndex = normalizeNormalTone(toneIndex)
+    local tone = Config.SirenTones[toneIndex]
+    if not tone then return end
+
+    -- Wichtig: Wenn derselbe normale Ton bereits laeuft, NICHT neu starten.
+    -- Dadurch bleibt seine Abspielposition auch waehrend Powercall erhalten.
+    if activeSounds[netId] and activeSoundTones[netId] == toneIndex then
+        return
+    end
+
+    stopSirenSound(netId)
+
+    local soundId = GetSoundId()
+    activeSounds[netId] = soundId
+    activeSoundTones[netId] = toneIndex
+
+    PlaySoundFromEntity(
+        soundId,
+        tone.sound,
+        vehicle,
+        tone.soundSet or 0,
+        false,
+        0
+    )
+end
+
+local function stopPowercallSound(netId)
+    local soundId = activePowercallSounds[netId]
+    if not soundId then return end
+
+    StopSound(soundId)
+    ReleaseSoundId(soundId)
+    activePowercallSounds[netId] = nil
+end
+
+local function startPowercallSound(netId, vehicle)
+    if activePowercallSounds[netId] then
+        return
+    end
+
+    local powercallToneIndex = tonumber(Config.PowercallToneIndex) or 4
+    local tone = Config.SirenTones[powercallToneIndex]
+    if not tone then return end
+
+    local soundId = GetSoundId()
+    activePowercallSounds[netId] = soundId
+
+    PlaySoundFromEntity(
+        soundId,
+        tone.sound,
+        vehicle,
+        tone.soundSet or 0,
+        false,
+        0
+    )
+end
+
+local function applyState(netId, state)
+    local vehicle = NetworkGetEntityFromNetworkId(netId)
+    if vehicle == 0 or not DoesEntityExist(vehicle) then
+        stopPowercallSound(netId)
+        stopSirenSound(netId)
+        return
+    end
+
+    -- Die GTA-Standardsirene bleibt stumm. Den Ton spielen wir selbst,
+    -- damit Licht und Martinshorn wirklich getrennt bleiben.
+    SetVehicleHasMutedSirens(vehicle, true)
+    SetVehicleSiren(vehicle, state.lights == true)
+
+    if state.lights and state.siren and not isNoSirenVehicle(vehicle) then
+        local normalTone = normalizeNormalTone(state.tone)
+        startSirenSound(netId, vehicle, normalTone)
+
+        if state.powercall == true then
+            -- Der normale Ton bleibt aktiv und laeuft zeitlich weiter,
+            -- wird waehrend Powercall aber nur stummgeschaltet.
+            setBaseSirenMuted(netId, true)
+            startPowercallSound(netId, vehicle)
+        else
+            stopPowercallSound(netId)
+            setBaseSirenMuted(netId, false)
+        end
+    else
+        stopPowercallSound(netId)
+        stopSirenSound(netId)
+    end
+end
+
+local function sendState(vehicle, state)
+    local netId = NetworkGetNetworkIdFromEntity(vehicle)
+    if netId == 0 then return end
+
+    state.tone = normalizeNormalTone(state.tone)
+    state.powercall = state.powercall == true
+
+    vehicleStates[netId] = state
+    applyState(netId, state)
+    TriggerServerEvent('lg_emergencycontrols:updateState', netId, state)
+end
+
+local function currentState(vehicle)
+    local netId = NetworkGetNetworkIdFromEntity(vehicle)
+    local state = vehicleStates[netId]
+
+    if not state then
+        state = {
+            lights = false,
+            siren = false,
+            tone = 1,
+            powercall = false
+        }
+        vehicleStates[netId] = state
+    end
+
+    state.tone = normalizeNormalTone(state.tone)
+    state.powercall = state.powercall == true
+
+    return netId, state
+end
+
 RegisterNetEvent('lg_emergencycontrols:syncState', function(netId, state)
     netId = tonumber(netId)
     if not netId or type(state) ~= 'table' then return end
 
+    state.tone = normalizeNormalTone(state.tone)
+    state.powercall = state.powercall == true
     vehicleStates[netId] = state
     applyState(netId, state)
 end)
@@ -193,7 +257,11 @@ RegisterNetEvent('lg_emergencycontrols:syncAll', function(states)
     vehicleStates = states
 
     for netId, state in pairs(vehicleStates) do
-        applyState(tonumber(netId), state)
+        if type(state) == 'table' then
+            state.tone = normalizeNormalTone(state.tone)
+            state.powercall = state.powercall == true
+            applyState(tonumber(netId), state)
+        end
     end
 end)
 
@@ -207,7 +275,8 @@ RegisterCommand('+lg_emergency_lights', function()
     sendState(vehicle, {
         lights = newLights,
         siren = newLights and state.siren or false,
-        tone = normalizeNormalTone(state.tone)
+        tone = state.tone,
+        powercall = false
     })
 
     notify(newLights and '~b~Blaulicht AN' or '~s~Blaulicht AUS')
@@ -236,7 +305,8 @@ RegisterCommand('+lg_emergency_siren', function()
     sendState(vehicle, {
         lights = true,
         siren = newSiren,
-        tone = normalizeNormalTone(state.tone)
+        tone = state.tone,
+        powercall = false
     })
 
     notify(newSiren and '~r~Martinshorn AN' or '~s~Martinshorn AUS')
@@ -255,8 +325,6 @@ RegisterCommand('+lg_emergency_tone', function()
     local thisPressToken = tonePressToken
 
     tonePressVehicle = vehicle
-    tonePressStartedAt = GetGameTimer()
-    tonePressPreviousTone = normalizeNormalTone(state.tone)
     tonePressPowercallActive = false
 
     CreateThread(function()
@@ -269,15 +337,13 @@ RegisterCommand('+lg_emergency_tone', function()
         local _, current = currentState(vehicle)
         if not current.lights or not current.siren then return end
 
-        local powercallTone = tonumber(Config.PowercallToneIndex) or 4
-        if not Config.SirenTones[powercallTone] then return end
-
         tonePressPowercallActive = true
 
         sendState(vehicle, {
             lights = true,
             siren = true,
-            tone = powercallTone
+            tone = current.tone,
+            powercall = true
         })
 
         notify('~r~Powercall')
@@ -286,12 +352,10 @@ end, false)
 
 RegisterCommand('-lg_emergency_tone', function()
     local vehicle = tonePressVehicle
-    local previousTone = tonePressPreviousTone
     local wasPowercallActive = tonePressPowercallActive
 
     tonePressToken = tonePressToken + 1
     tonePressVehicle = 0
-    tonePressStartedAt = 0
     tonePressPowercallActive = false
 
     if vehicle == 0 or getDriverVehicle() ~= vehicle then return end
@@ -300,16 +364,18 @@ RegisterCommand('-lg_emergency_tone', function()
     if not state.lights or not state.siren then return end
 
     if wasPowercallActive then
-        -- Langdruck beendet: exakt zum vorher gewaehlten normalen Ton zurueck.
+        -- Powercall nur ausschalten. Der normale Ton wurde nie gestoppt
+        -- und ist deshalb genau an seiner inzwischen erreichten Position.
         sendState(vehicle, {
             lights = true,
             siren = true,
-            tone = previousTone
+            tone = state.tone,
+            powercall = false
         })
         return
     end
 
-    -- Kurzer Druck: nur durch die normalen Toene schalten, Powercall wird uebersprungen.
+    -- Kurzer Druck: nur durch die normalen Toene schalten.
     local normalToneCount = getNormalToneCount()
     if normalToneCount < 2 then return end
 
@@ -321,7 +387,8 @@ RegisterCommand('-lg_emergency_tone', function()
     sendState(vehicle, {
         lights = true,
         siren = true,
-        tone = nextTone
+        tone = nextTone,
+        powercall = false
     })
 
     local tone = Config.SirenTones[nextTone]
@@ -373,6 +440,7 @@ CreateThread(function()
             if vehicle ~= 0 and DoesEntityExist(vehicle) then
                 applyState(numericNetId, state)
             else
+                stopPowercallSound(numericNetId)
                 stopSirenSound(numericNetId)
             end
         end
@@ -386,6 +454,10 @@ end)
 
 AddEventHandler('onResourceStop', function(resourceName)
     if resourceName ~= GetCurrentResourceName() then return end
+
+    for netId in pairs(activePowercallSounds) do
+        stopPowercallSound(netId)
+    end
 
     for netId in pairs(activeSounds) do
         stopSirenSound(netId)
