@@ -11,6 +11,9 @@ local tonePressToken = 0
 local tonePressVehicle = 0
 local tonePressPowercallActive = false
 local trackedDriverVehicle = 0
+local preferredTone = 1
+
+local PREFERRED_TONE_KVP = 'lg_emergencycontrols_preferred_tone'
 
 local function buildModelSet(list)
     local set = {}
@@ -20,12 +23,6 @@ local function buildModelSet(list)
     return set
 end
 
-CreateThread(function()
-    noControlModels = buildModelSet(Config.NoEmergencyControls)
-    noSirenModels = buildModelSet(Config.NoSirenVehicles)
-    extraAllowedModels = buildModelSet(Config.ExtraAllowedVehicles)
-end)
-
 local function notify(message)
     if not Config.ShowNotifications then return end
 
@@ -33,6 +30,50 @@ local function notify(message)
     AddTextComponentSubstringPlayerName(message)
     EndTextCommandThefeedPostTicker(false, false)
 end
+
+local function getNormalToneCount()
+    local configured = tonumber(Config.NormalSirenToneCount) or 3
+    local available = #(Config.SirenTones or {})
+
+    if configured < 1 then configured = 1 end
+    if configured > available then configured = available end
+
+    return configured
+end
+
+local function normalizeNormalTone(tone)
+    local normalToneCount = getNormalToneCount()
+    tone = tonumber(tone) or 1
+
+    if tone < 1 or tone > normalToneCount then
+        return 1
+    end
+
+    return tone
+end
+
+local function loadPreferredTone()
+    local stored = GetResourceKvpInt(PREFERRED_TONE_KVP)
+
+    if stored and stored > 0 then
+        preferredTone = normalizeNormalTone(stored)
+    else
+        preferredTone = 1
+    end
+end
+
+local function savePreferredTone(tone)
+    preferredTone = normalizeNormalTone(tone)
+    SetResourceKvpInt(PREFERRED_TONE_KVP, preferredTone)
+    return preferredTone
+end
+
+CreateThread(function()
+    noControlModels = buildModelSet(Config.NoEmergencyControls)
+    noSirenModels = buildModelSet(Config.NoSirenVehicles)
+    extraAllowedModels = buildModelSet(Config.ExtraAllowedVehicles)
+    loadPreferredTone()
+end)
 
 local function isNoSirenVehicle(vehicle)
     return noSirenModels[GetEntityModel(vehicle)] == true
@@ -80,27 +121,6 @@ local function getDriverVehicle()
     return vehicle
 end
 
-local function getNormalToneCount()
-    local configured = tonumber(Config.NormalSirenToneCount) or 3
-    local available = #(Config.SirenTones or {})
-
-    if configured < 1 then configured = 1 end
-    if configured > available then configured = available end
-
-    return configured
-end
-
-local function normalizeNormalTone(tone)
-    local normalToneCount = getNormalToneCount()
-    tone = tonumber(tone) or 1
-
-    if tone < 1 or tone > normalToneCount then
-        return 1
-    end
-
-    return tone
-end
-
 local function setBaseSirenMuted(netId, muted)
     local soundId = activeSounds[netId]
     if not soundId then return end
@@ -125,7 +145,7 @@ local function startSirenSound(netId, vehicle, toneIndex)
     local tone = Config.SirenTones[toneIndex]
     if not tone then return end
 
-    -- Wichtig: Wenn derselbe normale Ton bereits laeuft, NICHT neu starten.
+    -- Derselbe laufende normale Ton wird nie neu gestartet.
     -- Dadurch bleibt seine Abspielposition auch waehrend Powercall erhalten.
     if activeSounds[netId] and activeSoundTones[netId] == toneIndex then
         return
@@ -186,8 +206,6 @@ local function applyState(netId, state)
         return
     end
 
-    -- Die GTA-Standardsirene bleibt stumm. Den Ton spielen wir selbst,
-    -- damit Licht und Martinshorn wirklich getrennt bleiben.
     SetVehicleHasMutedSirens(vehicle, true)
     SetVehicleSiren(vehicle, state.lights == true)
 
@@ -196,8 +214,7 @@ local function applyState(netId, state)
         startSirenSound(netId, vehicle, normalTone)
 
         if state.powercall == true then
-            -- Der normale Ton bleibt aktiv und laeuft zeitlich weiter,
-            -- wird waehrend Powercall aber nur stummgeschaltet.
+            -- Der normale Ton laeuft im Hintergrund zeitlich weiter und wird nur stumm.
             setBaseSirenMuted(netId, true)
             startPowercallSound(netId, vehicle)
         else
@@ -230,7 +247,7 @@ local function currentState(vehicle)
         state = {
             lights = false,
             siren = false,
-            tone = 1,
+            tone = preferredTone,
             powercall = false
         }
         vehicleStates[netId] = state
@@ -248,6 +265,48 @@ local function cancelTonePress()
     tonePressPowercallActive = false
 end
 
+local function setPreferredToneForVehicle(vehicle, tone, showNotification)
+    if vehicle == 0 or not DoesEntityExist(vehicle) or isNoSirenVehicle(vehicle) then
+        return
+    end
+
+    tone = savePreferredTone(tone)
+    cancelTonePress()
+
+    local _, state = currentState(vehicle)
+
+    sendState(vehicle, {
+        lights = state.lights == true,
+        siren = state.siren == true,
+        tone = tone,
+        powercall = false
+    })
+
+    if showNotification then
+        local toneConfig = Config.SirenTones[tone]
+        notify(('~r~Martinshorn:~s~ %s'):format(toneConfig and toneConfig.label or tone))
+    end
+end
+
+local function applyPreferredToneOnEntry(vehicle)
+    if vehicle == 0 or not DoesEntityExist(vehicle) or isNoSirenVehicle(vehicle) then
+        return
+    end
+
+    local _, state = currentState(vehicle)
+
+    if state.tone == preferredTone and not state.powercall then
+        return
+    end
+
+    sendState(vehicle, {
+        lights = state.lights == true,
+        siren = state.siren == true,
+        tone = preferredTone,
+        powercall = false
+    })
+end
+
 local function stopSirenForExit(vehicle, useExitFallback)
     if vehicle == 0 or not DoesEntityExist(vehicle) then return end
 
@@ -257,7 +316,6 @@ local function stopSirenForExit(vehicle, useExitFallback)
     local state = vehicleStates[netId]
     if type(state) ~= 'table' then return end
 
-    -- Wenn das Martinshorn bereits aus ist, bleibt nur das Blaulicht unveraendert bestehen.
     if not state.siren and not state.powercall then return end
 
     local exitState = {
@@ -272,10 +330,8 @@ local function stopSirenForExit(vehicle, useExitFallback)
     cancelTonePress()
 
     if useExitFallback then
-        -- Fuer erzwungenes Aussteigen: Der Spieler kann hier bereits nicht mehr Fahrer sein.
         TriggerServerEvent('lg_emergencycontrols:driverExited', netId)
     else
-        -- Beim normalen Aussteigen wird der Zustand noch als Fahrer gesendet.
         TriggerServerEvent('lg_emergencycontrols:updateState', netId, exitState)
     end
 end
@@ -314,7 +370,7 @@ RegisterCommand('+lg_emergency_lights', function()
     sendState(vehicle, {
         lights = newLights,
         siren = newLights and state.siren or false,
-        tone = state.tone,
+        tone = preferredTone,
         powercall = false
     })
 
@@ -344,7 +400,7 @@ RegisterCommand('+lg_emergency_siren', function()
     sendState(vehicle, {
         lights = true,
         siren = newSiren,
-        tone = state.tone,
+        tone = preferredTone,
         powercall = false
     })
 
@@ -381,7 +437,7 @@ RegisterCommand('+lg_emergency_tone', function()
         sendState(vehicle, {
             lights = true,
             siren = true,
-            tone = current.tone,
+            tone = preferredTone,
             powercall = true
         })
 
@@ -401,43 +457,65 @@ RegisterCommand('-lg_emergency_tone', function()
     if not state.lights or not state.siren then return end
 
     if wasPowercallActive then
-        -- Powercall nur ausschalten. Der normale Ton wurde nie gestoppt
-        -- und ist deshalb genau an seiner inzwischen erreichten Position.
         sendState(vehicle, {
             lights = true,
             siren = true,
-            tone = state.tone,
+            tone = preferredTone,
             powercall = false
         })
         return
     end
 
-    -- Kurzer Druck: nur durch die normalen Toene schalten.
     local normalToneCount = getNormalToneCount()
     if normalToneCount < 2 then return end
 
-    local nextTone = normalizeNormalTone(state.tone) + 1
+    local nextTone = preferredTone + 1
     if nextTone > normalToneCount then
         nextTone = 1
     end
 
+    savePreferredTone(nextTone)
+
     sendState(vehicle, {
         lights = true,
         siren = true,
-        tone = nextTone,
+        tone = preferredTone,
         powercall = false
     })
 
-    local tone = Config.SirenTones[nextTone]
-    notify(('~r~Martinshorn:~s~ %s'):format(tone.label or nextTone))
+    local tone = Config.SirenTones[preferredTone]
+    notify(('~r~Martinshorn:~s~ %s'):format(tone.label or preferredTone))
 end, false)
+
+RegisterCommand('+lg_emergency_tone1', function()
+    local vehicle = getDriverVehicle()
+    if vehicle == 0 then return end
+    setPreferredToneForVehicle(vehicle, 1, true)
+end, false)
+RegisterCommand('-lg_emergency_tone1', function() end, false)
+
+RegisterCommand('+lg_emergency_tone2', function()
+    local vehicle = getDriverVehicle()
+    if vehicle == 0 then return end
+    setPreferredToneForVehicle(vehicle, 2, true)
+end, false)
+RegisterCommand('-lg_emergency_tone2', function() end, false)
+
+RegisterCommand('+lg_emergency_tone3', function()
+    local vehicle = getDriverVehicle()
+    if vehicle == 0 then return end
+    setPreferredToneForVehicle(vehicle, 3, true)
+end, false)
+RegisterCommand('-lg_emergency_tone3', function() end, false)
 
 RegisterKeyMapping('+lg_emergency_lights', 'Blaulicht AN / AUS', 'keyboard', Config.Keys.Lights)
 RegisterKeyMapping('+lg_emergency_siren', 'Martinshorn AN / AUS', 'keyboard', Config.Keys.Siren)
 RegisterKeyMapping('+lg_emergency_tone', 'Martinshorn wechseln / Powercall halten', 'keyboard', Config.Keys.Tone)
+RegisterKeyMapping('+lg_emergency_tone1', 'Martinshorn direkt: Wail', 'keyboard', Config.Keys.Tone1)
+RegisterKeyMapping('+lg_emergency_tone2', 'Martinshorn direkt: Yelp', 'keyboard', Config.Keys.Tone2)
+RegisterKeyMapping('+lg_emergency_tone3', 'Martinshorn direkt: Hi-Lo', 'keyboard', Config.Keys.Tone3)
 
--- Beim normalen Aussteigen wird das Martinshorn noch ausgeschaltet, solange der
--- Spieler serverseitig eindeutig als Fahrer erkannt wird. Das Blaulicht bleibt an.
+-- Beim normalen Aussteigen wird das Martinshorn ausgeschaltet, das Blaulicht bleibt an.
 CreateThread(function()
     while true do
         local vehicle = getDriverVehicle()
@@ -453,9 +531,8 @@ CreateThread(function()
     end
 end)
 
--- Fallback fuer Situationen, in denen ein anderes Script den Spieler aus dem Sitz
--- entfernt (Tod, Teleport, TaskLeaveVehicle usw.). Sobald der Fahrersitz verlassen
--- wurde, gehen Martinshorn und Powercall aus; der Lichtzustand wird nicht veraendert.
+-- Erkennt Fahrerwechsel. Beim Verlassen Sirene aus; beim Einsteigen persoenlichen
+-- Lieblingssound auf das neue Fahrzeug uebernehmen.
 CreateThread(function()
     while true do
         local ped = PlayerPedId()
@@ -473,12 +550,16 @@ CreateThread(function()
             stopSirenForExit(trackedDriverVehicle, true)
         end
 
+        if currentDriverVehicle ~= 0 and trackedDriverVehicle ~= currentDriverVehicle then
+            applyPreferredToneOnEntry(currentDriverVehicle)
+        end
+
         trackedDriverVehicle = currentDriverVehicle
         Wait(currentDriverVehicle ~= 0 and 50 or 100)
     end
 end)
 
--- Verhindert, dass GTA parallel eigene Funktionen auf denselben Tasten ausloest.
+-- Verhindert parallele GTA-Funktionen auf unseren Tasten.
 CreateThread(function()
     while true do
         local sleep = 500
@@ -486,10 +567,13 @@ CreateThread(function()
 
         if vehicle ~= 0 then
             sleep = 0
-            DisableControlAction(0, 19, true) -- Linkes ALT / Character Wheel
-            DisableControlAction(0, 86, true) -- E / Fahrzeughupe bzw. Standard-Sirenenbedienung
-            DisableControlAction(0, 85, true) -- Q / Radio-Wheel
-            DisableControlAction(0, 80, true) -- R / Cinematic Camera
+            DisableControlAction(0, 19, true)  -- Linkes ALT / Character Wheel
+            DisableControlAction(0, 86, true)  -- E / Fahrzeughupe bzw. Standard-Sirenenbedienung
+            DisableControlAction(0, 85, true)  -- Q / Radio-Wheel
+            DisableControlAction(0, 80, true)  -- R / Cinematic Camera
+            DisableControlAction(0, 157, true) -- 1 / Weapon Unarmed
+            DisableControlAction(0, 158, true) -- 2 / Weapon Melee
+            DisableControlAction(0, 160, true) -- 3 / Weapon Shotgun
         end
 
         Wait(sleep)
@@ -506,8 +590,7 @@ CreateThread(function()
     end
 end)
 
--- Wenn ein bereits synchronisiertes Fahrzeug erst spaeter in den Streaming-Bereich kommt,
--- wird der gespeicherte Zustand hier erneut angewendet.
+-- Gespeicherte Zustaende erneut anwenden, wenn Fahrzeuge in den Streaming-Bereich kommen.
 CreateThread(function()
     while true do
         Wait(1000)
