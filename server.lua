@@ -4,16 +4,20 @@ local function sanitizeState(state)
     if type(state) ~= 'table' then return nil end
 
     local tone = tonumber(state.tone) or 1
-    local maxTone = #(Config.SirenTones or {})
+    local maxTone = tonumber(Config.NormalSirenToneCount) or 3
+    local available = #(Config.SirenTones or {})
+
     if maxTone < 1 then maxTone = 1 end
+    if maxTone > available then maxTone = available end
 
     if tone < 1 then tone = 1 end
-    if tone > maxTone then tone = maxTone end
+    if tone > maxTone then tone = 1 end
 
     return {
         lights = state.lights == true,
         siren = state.siren == true,
-        tone = tone
+        tone = tone,
+        powercall = state.powercall == true
     }
 end
 
@@ -44,9 +48,14 @@ RegisterNetEvent('lg_emergencycontrols:updateState', function(netId, state)
         return
     end
 
-    -- Sirene darf ohne Licht niemals aktiv bleiben.
+    -- Sirene und Powercall duerfen ohne Licht nicht aktiv bleiben.
     if not cleanState.lights then
         cleanState.siren = false
+        cleanState.powercall = false
+    end
+
+    if not cleanState.siren then
+        cleanState.powercall = false
     end
 
     vehicleStates[netId] = cleanState
