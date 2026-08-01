@@ -12,28 +12,38 @@ Eigenstaendige FiveM-Resource fuer getrennte Steuerung von Blaulicht und Martins
 - **1**: Wail direkt waehlen
 - **2**: Yelp direkt waehlen
 - **3**: Hi-Lo direkt waehlen
+- **4**: Q-Siren direkt waehlen
 
 Die normalen Toene sind:
 
 1. Wail
 2. Yelp
 3. Hi-Lo
+4. Q-Siren
 
-Powercall ist kein vierter dauerhaft ausgewaehlter Ton. Er wird nur aktiviert, solange R lange gehalten wird. Standardmaessig gilt ein Druck ab 450 ms als Langdruck. Das kann in `config.lua` ueber `Config.PowercallHoldMs` angepasst werden.
+Ein kurzer Druck auf **R** schaltet zyklisch durch `1 -> 2 -> 3 -> 4 -> 1`.
 
-Der Powercall nutzt den bereits in GTA V vorhandenen Sound `VEHICLES_HORNS_AMBULANCE_WARNING`. Es ist dafuer keine zusaetzliche Audio-Datei erforderlich.
+Powercall ist kein dauerhaft ausgewaehlter Ton. Er wird nur aktiviert, solange R lange gehalten wird. Standardmaessig gilt ein Druck ab 450 ms als Langdruck. Das kann in `config.lua` ueber `Config.PowercallHoldMs` angepasst werden.
+
+Der Powercall nutzt den bereits in GTA V vorhandenen Sound `VEHICLES_HORNS_AMBULANCE_WARNING`.
+
+### Q-Siren
+
+Ton 4 nutzt aktuell `RESIDENT_VEHICLES_SIREN_FIRETRUCK_WAIL_01` als deutlich markantere GTA-basierte Q-Siren-Naeherrung. Dadurch ist die vierte Auswahl sofort testbar und benoetigt noch kein zusaetzliches Audio-Pack.
+
+Die Bedienlogik ist bereits so aufgebaut, dass dieser vierte Slot spaeter gegen ein echtes eigenes Q2B-/Q-Siren-Audio-Pack ausgetauscht werden kann, ohne Tasten, Favoriten oder Synchronisierung erneut umzubauen.
 
 ### Persoenlicher Lieblingssound
 
-Jeder Spieler hat eine eigene bevorzugte Sirene. Sowohl ein kurzer Druck auf **R** als auch die direkte Auswahl mit **1 / 2 / 3** speichert den ausgewaehlten Ton als persoenliche Vorgabe.
+Jeder Spieler hat eine eigene bevorzugte Sirene. Sowohl ein kurzer Druck auf **R** als auch die direkte Auswahl mit **1 / 2 / 3 / 4** speichert den ausgewaehlten Ton als persoenliche Vorgabe.
 
 Die Auswahl wird clientseitig per Resource-KVP gespeichert und bleibt dadurch auch nach einem Neustart erhalten. Steigt der Spieler spaeter als Fahrer in ein anderes unterstuetztes Einsatzfahrzeug ein, wird automatisch sein zuletzt gewaehlter Ton fuer dieses Fahrzeug uebernommen.
 
-Die direkte Auswahl mit **1 / 2 / 3** funktioniert auch, wenn das Martinshorn gerade ausgeschaltet ist. Dadurch kann der Lieblingssound vor dem Einschalten vorgewaehlt werden.
+Die direkte Auswahl mit **1 / 2 / 3 / 4** funktioniert auch, wenn das Martinshorn gerade ausgeschaltet ist. Dadurch kann der Lieblingssound vor dem Einschalten vorgewaehlt werden.
 
 ### Nahtloser Wechsel nach Powercall
 
-Der normale Martinshorn-Ton wird beim Start des Powercalls nicht gestoppt oder neu gestartet. Er laeuft intern weiter und wird waehrend des Powercalls nur stummgeschaltet. Beim Loslassen von R wird derselbe laufende Sound wieder eingeblendet. Dadurch beginnt Wail/Yelp/Hi-Lo nicht wieder von vorne.
+Der normale Martinshorn-Ton wird beim Start des Powercalls nicht gestoppt oder neu gestartet. Er laeuft intern weiter und wird waehrend des Powercalls nur stummgeschaltet. Beim Loslassen von R wird derselbe laufende Sound wieder eingeblendet. Dadurch beginnt der normale Ton nicht wieder von vorne.
 
 ### Verhalten beim Aussteigen
 
@@ -55,8 +65,8 @@ Die Tasten werden mit `RegisterKeyMapping` registriert und koennen von Spielern 
 - Blaulicht und Martinshorn sind voneinander getrennt.
 - Beim Ausschalten des Blaulichts wird das Martinshorn automatisch ausgeschaltet.
 - Beim Aussteigen wird das Martinshorn immer ausgeschaltet; Blaulicht darf an bleiben.
-- R wechselt zwischen Wail, Yelp und Hi-Lo und speichert die Wahl als Favorit.
-- 1, 2 und 3 waehlen die drei normalen Toene direkt.
+- R wechselt zwischen Wail, Yelp, Hi-Lo und Q-Siren und speichert die Wahl als Favorit.
+- 1, 2, 3 und 4 waehlen die vier normalen Toene direkt.
 - Der persoenliche Lieblingssound wird auf jedes neu gefahrene unterstuetzte Fahrzeug uebernommen.
 - Der ausgewaehlte normale Martinshorn-Ton bleibt beim Powercall erhalten und laeuft zeitlich weiter.
 - Fahrzeuge koennen komplett von der Steuerung ausgeschlossen werden.
