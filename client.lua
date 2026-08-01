@@ -567,7 +567,8 @@ CreateThread(function()
     end
 end)
 
--- Verhindert parallele GTA-Funktionen auf unseren Tasten.
+-- Verhindert parallele GTA-Funktionen auf unseren Sirenen-Tasten.
+-- Die normale Fahrzeughupe (Control 86 / E) bleibt bewusst frei.
 CreateThread(function()
     while true do
         local sleep = 500
@@ -576,7 +577,6 @@ CreateThread(function()
         if vehicle ~= 0 then
             sleep = 0
             DisableControlAction(0, 19, true)  -- Linkes ALT / Character Wheel
-            DisableControlAction(0, 86, true)  -- E / Fahrzeughupe bzw. Standard-Sirenenbedienung
             DisableControlAction(0, 85, true)  -- Q / Radio-Wheel
             DisableControlAction(0, 80, true)  -- R / Cinematic Camera
             DisableControlAction(0, 157, true) -- 1 / Weapon Unarmed
