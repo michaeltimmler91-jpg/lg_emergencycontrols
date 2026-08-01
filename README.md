@@ -9,16 +9,27 @@ Eigenstaendige FiveM-Resource fuer getrennte Steuerung von Blaulicht und Martins
 - **R kurz druecken**: normalen Martinshorn-Ton wechseln
 - **R gedrueckt halten**: Powercall temporaer abspielen
 - **R loslassen**: der normale Martinshorn-Ton wird genau an seiner inzwischen erreichten Abspielposition wieder hoerbar
+- **1**: Wail direkt waehlen
+- **2**: Yelp direkt waehlen
+- **3**: Hi-Lo direkt waehlen
 
-Die normalen, mit kurzem R wechselbaren Toene sind:
+Die normalen Toene sind:
 
 1. Wail
 2. Yelp
 3. Hi-Lo
 
-Powercall ist kein vierter dauerhaft ausgewaehlter Ton mehr. Er wird nur aktiviert, solange R lange gehalten wird. Standardmaessig gilt ein Druck ab 450 ms als Langdruck. Das kann in `config.lua` ueber `Config.PowercallHoldMs` angepasst werden.
+Powercall ist kein vierter dauerhaft ausgewaehlter Ton. Er wird nur aktiviert, solange R lange gehalten wird. Standardmaessig gilt ein Druck ab 450 ms als Langdruck. Das kann in `config.lua` ueber `Config.PowercallHoldMs` angepasst werden.
 
 Der Powercall nutzt den bereits in GTA V vorhandenen Sound `VEHICLES_HORNS_AMBULANCE_WARNING`. Es ist dafuer keine zusaetzliche Audio-Datei erforderlich.
+
+### Persoenlicher Lieblingssound
+
+Jeder Spieler hat eine eigene bevorzugte Sirene. Sowohl ein kurzer Druck auf **R** als auch die direkte Auswahl mit **1 / 2 / 3** speichert den ausgewaehlten Ton als persoenliche Vorgabe.
+
+Die Auswahl wird clientseitig per Resource-KVP gespeichert und bleibt dadurch auch nach einem Neustart erhalten. Steigt der Spieler spaeter als Fahrer in ein anderes unterstuetztes Einsatzfahrzeug ein, wird automatisch sein zuletzt gewaehlter Ton fuer dieses Fahrzeug uebernommen.
+
+Die direkte Auswahl mit **1 / 2 / 3** funktioniert auch, wenn das Martinshorn gerade ausgeschaltet ist. Dadurch kann der Lieblingssound vor dem Einschalten vorgewaehlt werden.
 
 ### Nahtloser Wechsel nach Powercall
 
@@ -27,8 +38,6 @@ Der normale Martinshorn-Ton wird beim Start des Powercalls nicht gestoppt oder n
 ### Verhalten beim Aussteigen
 
 Beim Verlassen des Fahrersitzes werden **Martinshorn und Powercall immer ausgeschaltet**. Der Zustand des Blaulichts wird dabei nicht veraendert.
-
-Beispiel:
 
 ```text
 Blaulicht AN + Martinshorn AN
@@ -46,9 +55,12 @@ Die Tasten werden mit `RegisterKeyMapping` registriert und koennen von Spielern 
 - Blaulicht und Martinshorn sind voneinander getrennt.
 - Beim Ausschalten des Blaulichts wird das Martinshorn automatisch ausgeschaltet.
 - Beim Aussteigen wird das Martinshorn immer ausgeschaltet; Blaulicht darf an bleiben.
+- R wechselt zwischen Wail, Yelp und Hi-Lo und speichert die Wahl als Favorit.
+- 1, 2 und 3 waehlen die drei normalen Toene direkt.
+- Der persoenliche Lieblingssound wird auf jedes neu gefahrene unterstuetzte Fahrzeug uebernommen.
 - Der ausgewaehlte normale Martinshorn-Ton bleibt beim Powercall erhalten und laeuft zeitlich weiter.
 - Fahrzeuge koennen komplett von der Steuerung ausgeschlossen werden.
-- Fahrzeuge wie Abschlepper koennen Licht benutzen, waehrend Q und R gesperrt sind.
+- Fahrzeuge wie Abschlepper koennen Licht benutzen, waehrend Martinshorn-Funktionen gesperrt sind.
 - GTA-`DistantCopCarSirens` werden deaktiviert, damit keine kuenstlichen Sirenen aus grosser Entfernung zu hoeren sind.
 - Sirenenzustand, Sirenenton und Powercall werden zwischen Spielern synchronisiert.
 - Keine ESX-/QBCore-Abhaengigkeit.
@@ -77,7 +89,7 @@ Config.NoSirenVehicles = {
 }
 ```
 
-Diese Fahrzeuge duerfen das Licht mit linkem ALT schalten, haben aber kein Martinshorn ueber Q und keine R-Funktion.
+Diese Fahrzeuge duerfen das Licht mit linkem ALT schalten, haben aber kein Martinshorn.
 
 Komplett ausschliessen:
 
