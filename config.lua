@@ -2,10 +2,16 @@ Config = {}
 
 -- Standard-Tasten. Spieler koennen diese spaeter in den FiveM-Keybindings aendern.
 Config.Keys = {
-    Lights = 'RMENU', -- Rechts ALT
+    Lights = 'LMENU', -- Linkes ALT
     Siren = 'Q',
     Tone = 'R'
 }
+
+-- R kurz: normalen Martinshorn-Ton wechseln.
+-- R lange halten: temporaer Powercall, beim Loslassen zurueck zum vorherigen Ton.
+Config.PowercallHoldMs = 450
+Config.NormalSirenToneCount = 3
+Config.PowercallToneIndex = 4
 
 -- Standardmaessig werden Fahrzeuge der GTA-Klasse 18 (Emergency) unterstuetzt.
 Config.RequireEmergencyClass = true
@@ -38,7 +44,8 @@ Config.DistantSirenRefreshMs = 5000
 Config.ShowNotifications = true
 
 -- Eingebaute GTA-Sirenen. Keine zusaetzliche Sirenen-Resource erforderlich.
--- Mit R wird zyklisch durch diese Liste geschaltet.
+-- Die ersten drei Toene sind die normalen, mit kurzem R wechselbaren Toene.
+-- Ton 4 ist nur der temporaere Powercall bei langem Druck auf R.
 Config.SirenTones = {
     {
         label = 'Wail',
