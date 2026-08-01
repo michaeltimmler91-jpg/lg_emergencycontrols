@@ -24,12 +24,28 @@ Der Powercall nutzt den bereits in GTA V vorhandenen Sound `VEHICLES_HORNS_AMBUL
 
 Der normale Martinshorn-Ton wird beim Start des Powercalls nicht gestoppt oder neu gestartet. Er laeuft intern weiter und wird waehrend des Powercalls nur stummgeschaltet. Beim Loslassen von R wird derselbe laufende Sound wieder eingeblendet. Dadurch beginnt Wail/Yelp/Hi-Lo nicht wieder von vorne.
 
+### Verhalten beim Aussteigen
+
+Beim Verlassen des Fahrersitzes werden **Martinshorn und Powercall immer ausgeschaltet**. Der Zustand des Blaulichts wird dabei nicht veraendert.
+
+Beispiel:
+
+```text
+Blaulicht AN + Martinshorn AN
+-> Fahrer steigt aus
+-> Blaulicht bleibt AN
+-> Martinshorn AUS
+```
+
+Die Resource erkennt sowohl normales Aussteigen als auch Situationen, in denen ein anderes Script den Spieler aus dem Fahrersitz entfernt, z. B. durch Tod, Teleport oder `TaskLeaveVehicle`.
+
 Die Tasten werden mit `RegisterKeyMapping` registriert und koennen von Spielern in den FiveM-Tastatureinstellungen geaendert werden.
 
 ## Besonderheiten
 
 - Blaulicht und Martinshorn sind voneinander getrennt.
 - Beim Ausschalten des Blaulichts wird das Martinshorn automatisch ausgeschaltet.
+- Beim Aussteigen wird das Martinshorn immer ausgeschaltet; Blaulicht darf an bleiben.
 - Der ausgewaehlte normale Martinshorn-Ton bleibt beim Powercall erhalten und laeuft zeitlich weiter.
 - Fahrzeuge koennen komplett von der Steuerung ausgeschlossen werden.
 - Fahrzeuge wie Abschlepper koennen Licht benutzen, waehrend Q und R gesperrt sind.
