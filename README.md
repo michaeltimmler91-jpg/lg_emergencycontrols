@@ -4,16 +4,19 @@ Eigenstaendige FiveM-Resource fuer getrennte Steuerung von Blaulicht und Martins
 
 ## Bedienung
 
-- **Rechts ALT**: Blaulicht AN / AUS
+- **Linkes ALT**: Blaulicht AN / AUS
 - **Q**: Martinshorn AN / AUS (nur wenn Blaulicht an ist)
-- **R**: Martinshorn-Ton wechseln
+- **R kurz druecken**: normalen Martinshorn-Ton wechseln
+- **R gedrueckt halten**: Powercall temporaer abspielen
+- **R loslassen**: automatisch zum vorher eingestellten normalen Martinshorn zurueck
 
-Mit **R** wird aktuell durch folgende vier Toene geschaltet:
+Die normalen, mit kurzem R wechselbaren Toene sind:
 
 1. Wail
 2. Yelp
 3. Hi-Lo
-4. Powercall
+
+Powercall ist kein vierter dauerhaft ausgewaehlter Ton mehr. Er wird nur aktiviert, solange R lange gehalten wird. Standardmaessig gilt ein Druck ab 450 ms als Langdruck. Das kann in `config.lua` ueber `Config.PowercallHoldMs` angepasst werden.
 
 Der Powercall nutzt den bereits in GTA V vorhandenen Sound `VEHICLES_HORNS_AMBULANCE_WARNING`. Es ist dafuer keine zusaetzliche Audio-Datei erforderlich.
 
@@ -23,6 +26,7 @@ Die Tasten werden mit `RegisterKeyMapping` registriert und koennen von Spielern 
 
 - Blaulicht und Martinshorn sind voneinander getrennt.
 - Beim Ausschalten des Blaulichts wird das Martinshorn automatisch ausgeschaltet.
+- Der ausgewaehlte normale Martinshorn-Ton bleibt beim Powercall erhalten.
 - Fahrzeuge koennen komplett von der Steuerung ausgeschlossen werden.
 - Fahrzeuge wie Abschlepper koennen Licht benutzen, waehrend Q und R gesperrt sind.
 - GTA-`DistantCopCarSirens` werden deaktiviert, damit keine kuenstlichen Sirenen aus grosser Entfernung zu hoeren sind.
@@ -53,7 +57,7 @@ Config.NoSirenVehicles = {
 }
 ```
 
-Diese Fahrzeuge duerfen das Licht mit Rechts ALT schalten, haben aber kein Martinshorn ueber Q und keinen Tonwechsel ueber R.
+Diese Fahrzeuge duerfen das Licht mit linkem ALT schalten, haben aber kein Martinshorn ueber Q und keine R-Funktion.
 
 Komplett ausschliessen:
 
@@ -70,6 +74,14 @@ Config.ExtraAllowedVehicles = {
     'mein_sonderfahrzeug'
 }
 ```
+
+## Powercall-Langdruck anpassen
+
+```lua
+Config.PowercallHoldMs = 450
+```
+
+Kleinerer Wert = Powercall startet schneller. Groesserer Wert = R muss laenger gehalten werden.
 
 ## Hinweis
 
