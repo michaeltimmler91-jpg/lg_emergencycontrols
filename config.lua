@@ -4,7 +4,10 @@ Config = {}
 Config.Keys = {
     Lights = 'LMENU', -- Linkes ALT
     Siren = 'Q',
-    Tone = 'R'
+    Tone = 'R',
+    Tone1 = '1',
+    Tone2 = '2',
+    Tone3 = '3'
 }
 
 -- R kurz: normalen Martinshorn-Ton wechseln.
@@ -50,7 +53,7 @@ Config.DistantSirenRefreshMs = 5000
 Config.ShowNotifications = true
 
 -- Eingebaute GTA-Sirenen. Keine zusaetzliche Sirenen-Resource erforderlich.
--- Die ersten drei Toene sind die normalen, mit kurzem R wechselbaren Toene.
+-- Die ersten drei Toene sind die normalen Toene.
 -- Ton 4 ist nur der temporaere Powercall bei langem Druck auf R.
 Config.SirenTones = {
     {
