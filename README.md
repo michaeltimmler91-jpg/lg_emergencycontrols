@@ -8,6 +8,15 @@ Eigenstaendige FiveM-Resource fuer getrennte Steuerung von Blaulicht und Martins
 - **Q**: Martinshorn AN / AUS (nur wenn Blaulicht an ist)
 - **R**: Martinshorn-Ton wechseln
 
+Mit **R** wird aktuell durch folgende vier Toene geschaltet:
+
+1. Wail
+2. Yelp
+3. Hi-Lo
+4. Powercall
+
+Der Powercall nutzt den bereits in GTA V vorhandenen Sound `VEHICLES_HORNS_AMBULANCE_WARNING`. Es ist dafuer keine zusaetzliche Audio-Datei erforderlich.
+
 Die Tasten werden mit `RegisterKeyMapping` registriert und koennen von Spielern in den FiveM-Tastatureinstellungen geaendert werden.
 
 ## Besonderheiten
