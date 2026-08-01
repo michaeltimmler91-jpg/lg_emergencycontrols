@@ -7,14 +7,15 @@ Config.Keys = {
     Tone = 'R',
     Tone1 = '1',
     Tone2 = '2',
-    Tone3 = '3'
+    Tone3 = '3',
+    Tone4 = '4'
 }
 
 -- R kurz: normalen Martinshorn-Ton wechseln.
 -- R lange halten: temporaer Powercall, beim Loslassen zurueck zum laufenden normalen Ton.
 Config.PowercallHoldMs = 450
-Config.NormalSirenToneCount = 3
-Config.PowercallToneIndex = 4
+Config.NormalSirenToneCount = 4
+Config.PowercallToneIndex = 5
 
 -- Der normale Ton wird waehrend Powercall NICHT gestoppt, sondern nur stumm geschaltet.
 -- Dadurch laeuft seine Abspielposition weiter und setzt danach nahtlos fort.
@@ -53,8 +54,10 @@ Config.DistantSirenRefreshMs = 5000
 Config.ShowNotifications = true
 
 -- Eingebaute GTA-Sirenen. Keine zusaetzliche Sirenen-Resource erforderlich.
--- Die ersten drei Toene sind die normalen Toene.
--- Ton 4 ist nur der temporaere Powercall bei langem Druck auf R.
+-- Die ersten vier Toene sind die normalen Favoriten-Toene.
+-- Ton 4 ist aktuell eine GTA-basierte Q-Siren-Naeherrung und kann spaeter 1:1
+-- gegen ein eigenes Audio-Pack getauscht werden, ohne die Bedienlogik anzufassen.
+-- Ton 5 ist nur der temporaere Powercall bei langem Druck auf R.
 Config.SirenTones = {
     {
         label = 'Wail',
@@ -69,6 +72,11 @@ Config.SirenTones = {
     {
         label = 'Hi-Lo',
         sound = 'RESIDENT_VEHICLES_SIREN_QUICK_02',
+        soundSet = 0
+    },
+    {
+        label = 'Q-Siren',
+        sound = 'RESIDENT_VEHICLES_SIREN_FIRETRUCK_WAIL_01',
         soundSet = 0
     },
     {
